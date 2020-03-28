@@ -1,0 +1,53 @@
+CREATE TABLE ratings(user_id INT, isbn VARCHAR(20), rating TINYINT)
+
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES (
+   "separatorChar" = ";",
+   "quoteChar"     = "\""
+)   tblproperties("skip.header.line.count"="1");
+
+load data inpath "/user/edureka_572857/book_project_dataset/BX-Book-Ratings.csv" into table ratings;
+
+CREATE TABLE user(user_id INT, location_b VARCHAR(100), age TINYINT)
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES (
+   "separatorChar" = ";",
+   "quoteChar"     = "\""
+)   tblproperties("skip.header.line.count"="1");
+
+load data inpath "/user/edureka_572857/book_project_dataset/BX-Users.csv" into table user;
+
+CREATE TABLE books_dummy(isbn varchar(15), title varchar(100), author varchar(100), year_of_pub TINYINT,
+publisher VARCHAR(100),url_s varchar(300),url_m varchar(300),url_l varchar(300) )
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES (
+   "separatorChar" = ";",
+   "quoteChar"     = "\""
+)   tblproperties("skip.header.line.count"="1");
+
+load data inpath "/user/edureka_572857/book_project_dataset/BX-Books.csv" into table books_dummy;
+
+CREATE TABLE books(isbn varchar(15), title varchar(100), author varchar(100),
+publisher VARCHAR(100),url_s varchar(300),url_m varchar(300),url_l varchar(300) )
+partitioned by (year_of_pub varchar(4))
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES (
+   "separatorChar" = ";",
+   "quoteChar"     = "\""
+)   tblproperties("skip.header.line.count"="1");
+
+insert into books partition(year_of_pub) select isbn , title, author,
+publisher,url_s,url_m,url_l, year_of_pub from books_dummy;
+
+select count(*) as frequency, year_of_pub 
+from books_dummy group by year_of_pub order by frequency desc;
+
+select * from (select count(*) as frequency, year_of_pub, dense_rank() over
+(order by year_of_pub desc) as frequency_rank
+from books_dummy group by year_of_pub) a; ::: For Ranking
+
+select * from 
+(select frequency, year_of_pub,  dense_rank() over
+(order by frequency desc) as frequency_rank from 
+(select count(*) as frequency, year_of_pub
+from books_dummy group by year_of_pub) a ) b where b.frequency_rank = 1;
